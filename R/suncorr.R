@@ -27,7 +27,7 @@
 #'
 #' # Load up the correlation matrix between majors
 #' data(C)
-#' # And the within-major covariances
+#' # And the within-major variances
 #' data(majorvariance)
 #'
 #' # Draw the graph
