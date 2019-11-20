@@ -10,18 +10,19 @@
 #'
 #' @param C This is a correlation matrix. Matrix, data.frame, or tibble all work. The diagonal will be ignored. The order of the variables in C will be used to arrange them clockwise.
 #' @param names A character vector with the names of the variables, which will be displayed on the graph. By default takes the column names of C. Or, set to FALSE to omit variable names (although good luck understanding the graph).
-#' @param sunsize If you would like the "suns" to be scaled at different sizes, perhaps using the covariance, set this to a numeric vector with that size.
+#' @param sunsize If you would like the "suns" to be scaled at different sizes, perhaps using the variance, set this to a numeric vector with that size. Keep in mind that a value of 1 will be a same-size sun as a perfect correlation moon.
 #' @param suncolor This is the color that the suns will be.
 #' @param moonpositive This is the color that the positively-valued moons will be.
 #' @param moonnegative This is the color that the negatively-valued moons will be.
-#' @param sunscale  Multiply the ggplot size argument by this number for the suns.
-#' @param moonscale Multiply the ggplot size argument by this number for the moons.
-#' @param allscale Just sorta make everything bigger
+#' @param sunscale  Multiply the circle diameter by this number for the suns.
+#' @param moonscale Multiply the circle diameter by this number for the moons.
 #' @param sunradius The distance from the center of the universe to the center point of the suns.
 #' @param moonradius The distance from the center of each sun to the center of each moon.
 #' @param nameradius The distance from the center of the universe to the names of the suns.
 #' @param printsizesun Prints the size of suns right on 'em.
-#' @param printsizemoon Prints the size of suns right on 'em.
+#' @param printsizemoon Prints the size of moons right on 'em.
+#' @param namesize The size argument for the geom_text names of the suns.
+#' @param labelsize The size arguments for the size of the suns/moons as written on them.
 #'
 #' @examples
 #'
@@ -30,12 +31,18 @@
 #' # And the within-major variances
 #' data(majorvariance)
 #'
-#' # Draw the graph
-#' suncorr(C, sunsize = majorvariance)
+#' # Draw the graph, futzing with a lot of the parameters to make it look nicer
+#' suncorr(C,
+#'     sunsize = majorvariance,
+#'     sunscale = 1/min(majorvariance),
+#'     labelsize = 5,
+#'     moonradius = 1.25,
+#'     sunradius = 5,
+#'     nameradius = 2.5)
 #'
 #' @export
 
-suncorr <- function(C, names = NULL, sunsize = NULL, suncolor = 'green', moonpositive = 'blue', moonnegative = 'red', sunscale = 4, moonscale = 1, allscale = 20, sunradius = .85, moonradius = .15, nameradius = .5, printsizesun = TRUE, printsizemoon = FALSE) {
+suncorr <- function(C, names = NULL, sunsize = NULL, suncolor = 'green', moonpositive = 'blue', moonnegative = 'red', sunscale = 1, moonscale = 1, sunradius = 4, moonradius = 1, nameradius = 2, printsizesun = TRUE, printsizemoon = FALSE, namesize = 5, labelsize = 3) {
 
   # We work with a matrix!
   C <- as.matrix(C)
@@ -64,71 +71,75 @@ suncorr <- function(C, names = NULL, sunsize = NULL, suncolor = 'green', moonpos
 
   # First, turn the correlation matrix into a set of points
   # Begin with the suns
-  suns <- tibble(sunid = 1:nsun,
+  suns <- dplyr::tibble(sunid = 1:nsun,
                sunname = names,
                r = rotate,
                d = sunradius) %>%
-    mutate(x = p2cx(r, d),
+    dplyr::mutate(x = p2cx(r, d),
            y = p2cy(r, d),
            xtext = p2cx(r, nameradius),
            ytext = p2cy(r, nameradius))
 
   # Put each moon on its own line in a data set
-  moons <- tibble(sunid = sort(rep(1:nsun,nsun)),
+  moons <- dplyr::tibble(sunid = sort(rep(1:nsun,nsun)),
                   moonid = rep(1:nsun, nsun),
                   moonsize = as.vector(C)) %>%
-    filter(sunid != moonid) %>%
-    left_join(suns, by = 'sunid') %>%
-    left_join(suns %>%
-                transmute(moonid = sunid,
+    dplyr::filter(sunid != moonid) %>%
+    dplyr::left_join(suns, by = 'sunid') %>%
+    dplyr::left_join(suns %>%
+                       dplyr::transmute(moonid = sunid,
                        rmoon = r), by = 'moonid') %>%
-    mutate(dmoon = moonradius,
+    dplyr::mutate(moonlabel = round(moonsize, 2)) %>%
+    dplyr::mutate(dmoon = moonradius,
            pos = moonsize >= 0,
-           moonlabel = round(moonsize, 2),
            moonsize = moonscale*abs(moonsize)) %>%
     # Locate the moons
-    mutate(x = p2cx(rmoon, dmoon, x, y),
+    dplyr::mutate(x = p2cx(rmoon, dmoon, x, y),
            y = p2cy(rmoon, dmoon, x, y))
+
+  mooncols <- c(moonnegative, moonpositive)
+  # If there are only positive correlations, then the above won't work
+  if (min(moons$pos) == 1) {
+    mooncols <- moonpositive
+  }
 
   # Size the suns
   if (is.null(sunsize)) {
     suns <- suns %>%
-      mutate(sunsize = sunscale,
+      dplyr::mutate(sunsize = sunscale,
              sunlabel = 1)
   } else {
     suns <- suns %>%
-      mutate(sunsize = sunscale*sunsize,
-             sunlabel = round(sunsize, 2))
+      dplyr::mutate(sunlabel = round(sunsize, 2)) %>%
+      dplyr::mutate(sunsize = sunscale*sunsize)
   }
 
   # Build that graph!
   # Put on the suns
-  p <- ggplot(suns, aes(x = x, y = y, size = sunsize)) +
-    geom_point(color = suncolor) +
+  p <- ggplot(suns, aes(x0 = x, y0 = y, r = sunsize/2)) +
+    ggforce::geom_circle(fill = suncolor, color = suncolor) +
     # And add names
-    geom_text(mapping = aes(x = xtext, y = ytext, label = sunname), size = 5) +
+    geom_text(mapping = aes(x = xtext, y = ytext, label = sunname), size = namesize) +
     # Theming
     theme_void() +
     theme(legend.position = 'none') +
-    scale_x_continuous(limits = c(-1, 1)) +
-    scale_y_continuous(limits = c(-1, 1)) +
-    scale_size_continuous(range = c(5,allscale))
+    coord_fixed()
 
   # If requested
   if (printsizesun) {
     p <- p +
-      geom_text(mapping = aes(x = x, y = y, label = sunlabel), size = sunscale)
+      geom_text(mapping = aes(x = x, y = y, label = sunlabel), size = labelsize)
   }
 
   # Add moons
   p <- p +
-    geom_point(data = moons, mapping = aes(x = x, y = y, size = moonsize, color = pos))+
-    scale_discrete_manual(values = c(moonpositive, moonnegative), aesthetics = "color")
+    ggforce::geom_circle(data = moons, mapping = aes(x0 = x, y0 = y, r = moonsize/2, color = pos, fill = pos))+
+    scale_discrete_manual(values = mooncols, aesthetics = c("color", "fill"))
 
   # If requested
   if (printsizemoon) {
     p <- p +
-      geom_text(data = moons, mapping = aes(x = x, y = y, label = moonlabel), size = moonscale*.75)
+      geom_text(data = moons, mapping = aes(x = x, y = y, label = moonlabel), size = labelsize)
   }
 
   return(p)

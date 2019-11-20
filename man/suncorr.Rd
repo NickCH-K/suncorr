@@ -5,17 +5,17 @@
 \title{suncorr}
 \usage{
 suncorr(C, names = NULL, sunsize = NULL, suncolor = "green",
-  moonpositive = "blue", moonnegative = "red", sunscale = 4,
-  moonscale = 1, allscale = 20, sunradius = 0.85,
-  moonradius = 0.15, nameradius = 0.5, printsizesun = TRUE,
-  printsizemoon = FALSE)
+  moonpositive = "blue", moonnegative = "red", sunscale = 1,
+  moonscale = 1, sunradius = 4, moonradius = 1, nameradius = 2,
+  printsizesun = TRUE, printsizemoon = FALSE, namesize = 5,
+  labelsize = 3)
 }
 \arguments{
 \item{C}{This is a correlation matrix. Matrix, data.frame, or tibble all work. The diagonal will be ignored. The order of the variables in C will be used to arrange them clockwise.}
 
 \item{names}{A character vector with the names of the variables, which will be displayed on the graph. By default takes the column names of C. Or, set to FALSE to omit variable names (although good luck understanding the graph).}
 
-\item{sunsize}{If you would like the "suns" to be scaled at different sizes, perhaps using the covariance, set this to a numeric vector with that size.}
+\item{sunsize}{If you would like the "suns" to be scaled at different sizes, perhaps using the variance, set this to a numeric vector with that size. Keep in mind that a value of 1 will be a same-size sun as a perfect correlation moon.}
 
 \item{suncolor}{This is the color that the suns will be.}
 
@@ -23,11 +23,9 @@ suncorr(C, names = NULL, sunsize = NULL, suncolor = "green",
 
 \item{moonnegative}{This is the color that the negatively-valued moons will be.}
 
-\item{sunscale}{Multiply the ggplot size argument by this number for the suns.}
+\item{sunscale}{Multiply the circle diameter by this number for the suns.}
 
-\item{moonscale}{Multiply the ggplot size argument by this number for the moons.}
-
-\item{allscale}{Just sorta make everything bigger}
+\item{moonscale}{Multiply the circle diameter by this number for the moons.}
 
 \item{sunradius}{The distance from the center of the universe to the center point of the suns.}
 
@@ -37,7 +35,11 @@ suncorr(C, names = NULL, sunsize = NULL, suncolor = "green",
 
 \item{printsizesun}{Prints the size of suns right on 'em.}
 
-\item{printsizemoon}{Prints the size of suns right on 'em.}
+\item{printsizemoon}{Prints the size of moons right on 'em.}
+
+\item{namesize}{The size argument for the geom_text names of the suns.}
+
+\item{labelsize}{The size arguments for the size of the suns/moons as written on them.}
 }
 \description{
 This function takes a correlation matrix and turns it into a ggplot suncorr object.
@@ -56,7 +58,13 @@ data(C)
 # And the within-major variances
 data(majorvariance)
 
-# Draw the graph
-suncorr(C, sunsize = majorvariance)
+# Draw the graph, futzing with a lot of the parameters to make it look nicer
+suncorr(C,
+    sunsize = majorvariance,
+    sunscale = 1/min(majorvariance),
+    labelsize = 5,
+    moonradius = 1.25,
+    sunradius = 5,
+    nameradius = 2.5)
 
 }

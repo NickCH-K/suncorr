@@ -7,9 +7,12 @@ Maintainer: Nick Huntington-Klein <nhuntington-klein@fullerton.edu>
 Description: This package takes a correlation matrix and plots it. Each variable is assigned in a radial order. Then, around each variable's "sun", the other vairables follow the same radial order around it, with size indicating the strength of correlation  with the sun.
 License: MIT
 Require: 
-    R (>= 3.4)
+    R (>= 3.4),
+    magrittr,
     ggplot2
-    dplyr
+Depends:
+    dplyr,
+    ggforce
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1
